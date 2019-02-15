@@ -23,6 +23,14 @@ fn main() -> io::Result<()> {
                 .index(1),
         )
         .arg(
+            Arg::with_name("entries")
+                .short("l")
+                .long("list-entries")
+                .requires("INPUT")
+                .conflicts_with("count")
+                .help("Returns the entries' names and offsets"),
+        )
+        .arg(
             Arg::with_name("count")
                 .short("n")
                 .long("count")
@@ -66,7 +74,41 @@ fn main() -> io::Result<()> {
     let number_of_entries = file.read_u32::<LittleEndian>()?;
 
     if matches.is_present("count") {
-    println!("Number of entries is {}", number_of_entries);
+        println!("Number of entries is {}", number_of_entries);
+    }
+
+    for _ in 0..number_of_entries {
+        file.seek(SeekFrom::Current(4))?; // Entry size is not needed;
+        loop {
+            let mut tag_type = [0u8; 4];
+            file.read(&mut tag_type).unwrap();
+            debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap());
+            if tag_type.as_ref() == b"ENDT" {
+                trace!("Hit end");
+                break;
+            }
+
+            let tag_length = file.read_u16::<LittleEndian>()? as usize;
+            match tag_type.as_ref() {
+                b"NAME" => {
+                    let mut name_buffer = vec![0u8; tag_length];
+
+                    debug!("Size of name {}", tag_length);
+                    file.read_exact(&mut name_buffer)?;
+                    let name_slice = std::str::from_utf8(&name_buffer).unwrap();
+                    info!("Found entry named {}", name_slice);
+                }
+                b"MDSZ" => {
+                    debug!("MDSZ tag length {}", tag_length);
+                    let size = file.read_u64::<LittleEndian>()?;
+                    info!("\t- Function size {}", size);
+                }
+                _ => {
+                    debug!("No match for tag length {}", tag_length);
+                    file.seek(SeekFrom::Current(tag_length as i64))?;
+                }
+            }
+        }
     }
 
     Ok(())
