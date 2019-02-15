@@ -11,6 +11,57 @@ use std::io;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 
+struct HeaderInformation {
+    pub entry_headers_offset: u64,
+    pub entry_bodys_offset: u64,
+    pub number_of_entries: u32,
+}
+
+impl HeaderInformation {
+    pub fn from_reader<RAndS: Read + Seek>(
+        reader: &mut RAndS,
+    ) -> Result<HeaderInformation, io::Error> {
+        reader.seek(SeekFrom::Start(0x18))?;
+        let number_of_entries_offset = reader.read_u32::<LittleEndian>()? as u64;
+
+        reader.seek(SeekFrom::Start(0x48))?;
+        let payload_offset = reader.read_u32::<LittleEndian>()? as u64;
+
+        reader.seek(SeekFrom::Start(number_of_entries_offset))?;
+        let number_of_entries = reader.read_u32::<LittleEndian>()?;
+
+        return Ok(HeaderInformation {
+            entry_headers_offset: number_of_entries_offset + 4,
+            entry_bodys_offset: payload_offset,
+            number_of_entries,
+        });
+    }
+}
+
+struct MetalLibraryEntry {
+    pub name: String,
+    pub body_size: u64,
+}
+
+struct MetalLibrary {
+    header: HeaderInformation,
+    entry_stubs: Vec<MetalLibraryEntry>,
+}
+
+impl MetalLibrary {
+    fn create(header: HeaderInformation, entries: Option<Vec<MetalLibraryEntry>>) -> Self {
+        let entry_stubs = entries.unwrap_or_else(|| {
+            let mut stubs: Vec<MetalLibraryEntry> = Vec::new();
+            stubs.reserve(header.number_of_entries as usize);
+            stubs
+        });
+        MetalLibrary {
+            header,
+            entry_stubs,
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
     let matches = App::new("mtl-info")
         .version("1.0")
@@ -68,16 +119,26 @@ fn main() -> io::Result<()> {
     let input_file_path = matches.value_of("INPUT").unwrap();
     let mut file = File::open(input_file_path)?;
 
+    let header = HeaderInformation::from_reader(&mut file)?;
+
     file.seek(SeekFrom::Start(0x18))?;
     let number_of_entries_offset = file.read_u32::<LittleEndian>()? as u64;
     file.seek(SeekFrom::Start(number_of_entries_offset))?;
     let number_of_entries = file.read_u32::<LittleEndian>()?;
 
+    assert_eq!(header.number_of_entries, number_of_entries);
+    assert_eq!(header.entry_headers_offset, number_of_entries_offset + 4);
+
     if matches.is_present("count") {
         println!("Number of entries is {}", number_of_entries);
     }
 
+    let mut entries: Vec<MetalLibraryEntry> = Vec::new();
+    entries.reserve(number_of_entries as usize);
+
     for _ in 0..number_of_entries {
+        let mut file_name: Option<String> = None;
+        let mut body_size = 064;
         file.seek(SeekFrom::Current(4))?; // Entry size is not needed;
         loop {
             let mut tag_type = [0u8; 4];
@@ -85,6 +146,10 @@ fn main() -> io::Result<()> {
             debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap());
             if tag_type.as_ref() == b"ENDT" {
                 trace!("Hit end");
+                entries.push(MetalLibraryEntry {
+                    name: file_name.unwrap(),
+                    body_size,
+                });
                 break;
             }
 
@@ -97,11 +162,13 @@ fn main() -> io::Result<()> {
                     file.read_exact(&mut name_buffer)?;
                     let name_slice = std::str::from_utf8(&name_buffer).unwrap();
                     info!("Found entry named {}", name_slice);
+                    file_name = Some(name_slice.to_owned());
                 }
                 b"MDSZ" => {
                     debug!("MDSZ tag length {}", tag_length);
                     let size = file.read_u64::<LittleEndian>()?;
                     info!("\t- Function size {}", size);
+                    body_size = size;
                 }
                 _ => {
                     debug!("No match for tag length {}", tag_length);
