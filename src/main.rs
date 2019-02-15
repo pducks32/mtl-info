@@ -121,22 +121,14 @@ fn main() -> io::Result<()> {
 
     let header = HeaderInformation::from_reader(&mut file)?;
 
-    file.seek(SeekFrom::Start(0x18))?;
-    let number_of_entries_offset = file.read_u32::<LittleEndian>()? as u64;
-    file.seek(SeekFrom::Start(number_of_entries_offset))?;
-    let number_of_entries = file.read_u32::<LittleEndian>()?;
-
-    assert_eq!(header.number_of_entries, number_of_entries);
-    assert_eq!(header.entry_headers_offset, number_of_entries_offset + 4);
-
     if matches.is_present("count") {
-        println!("Number of entries is {}", number_of_entries);
+        println!("Number of entries is {}", header.number_of_entries);
     }
 
     let mut entries: Vec<MetalLibraryEntry> = Vec::new();
-    entries.reserve(number_of_entries as usize);
+    entries.reserve(header.number_of_entries as usize);
 
-    for _ in 0..number_of_entries {
+    for _ in 0..header.number_of_entries {
         let mut file_name: Option<String> = None;
         let mut body_size = 064;
         file.seek(SeekFrom::Current(4))?; // Entry size is not needed;
