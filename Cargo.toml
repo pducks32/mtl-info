@@ -7,3 +7,5 @@ edition = "2018"
 [dependencies]
 byteorder = "1"
 clap = "~2"
+log = "~0"
+simple_logger = "~1"
