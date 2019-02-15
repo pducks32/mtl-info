@@ -125,10 +125,9 @@ fn main() -> io::Result<()> {
         println!("Number of entries is {}", header.number_of_entries);
     }
 
-    let mut entries: Vec<MetalLibraryEntry> = Vec::new();
-    entries.reserve(header.number_of_entries as usize);
+    let mut metal_library = MetalLibrary::create(header, None);
 
-    for _ in 0..header.number_of_entries {
+    for _ in 0..metal_library.header.number_of_entries {
         let mut file_name: Option<String> = None;
         let mut body_size = 064;
         file.seek(SeekFrom::Current(4))?; // Entry size is not needed;
@@ -138,7 +137,7 @@ fn main() -> io::Result<()> {
             debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap());
             if tag_type.as_ref() == b"ENDT" {
                 trace!("Hit end");
-                entries.push(MetalLibraryEntry {
+                metal_library.entry_stubs.push(MetalLibraryEntry {
                     name: file_name.unwrap(),
                     body_size,
                 });
