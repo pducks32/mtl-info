@@ -1,8 +1,11 @@
 extern crate byteorder;
 extern crate clap;
+extern crate log;
+extern crate simple_logger;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{App, Arg};
+use log::{debug, info, trace, Level};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
