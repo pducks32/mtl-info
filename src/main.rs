@@ -29,7 +29,31 @@ fn main() -> io::Result<()> {
                 .requires("INPUT")
                 .help("Return number of functions found in INPUT"),
         )
+        .arg(
+            Arg::with_name("verbosity")
+                .long("verbosity")
+                .takes_value(true)
+                .default_value("2")
+                .help("Set's the logger level. Between 1 and 4"),
+        )
         .get_matches();
+
+    let verbosity = matches
+        .value_of("verbosity")
+        .unwrap()
+        .parse::<u8>()
+        .unwrap();
+
+    let level = match verbosity {
+        0 => Level::Error,
+        1 => Level::Warn,
+        2 => Level::Info,
+        3 => Level::Debug,
+        x if x >= 4 => Level::Trace,
+        _ => Level::Trace,
+    };
+
+    simple_logger::init_with_level(level).unwrap();
 
     // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
     // required we could have used an 'if let' to conditionally get the value)
