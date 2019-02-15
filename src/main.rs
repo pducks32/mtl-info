@@ -22,6 +22,13 @@ fn main() -> io::Result<()> {
                 .required(true)
                 .index(1),
         )
+        .arg(
+            Arg::with_name("count")
+                .short("n")
+                .long("count")
+                .requires("INPUT")
+                .help("Return number of functions found in INPUT"),
+        )
         .get_matches();
 
     // Calling .unwrap() is safe here because "INPUT" is required (if "INPUT" wasn't
@@ -30,10 +37,13 @@ fn main() -> io::Result<()> {
     let mut file = File::open(input_file_path)?;
 
     file.seek(SeekFrom::Start(0x18))?;
-    let number_of_entries_offset = file.read_u32::<LittleEndian>()?;
-    file.seek(SeekFrom::Start(number_of_entries_offset as u64))?;
+    let number_of_entries_offset = file.read_u32::<LittleEndian>()? as u64;
+    file.seek(SeekFrom::Start(number_of_entries_offset))?;
     let number_of_entries = file.read_u32::<LittleEndian>()?;
+
+    if matches.is_present("count") {
     println!("Number of entries is {}", number_of_entries);
+    }
 
     Ok(())
 }
