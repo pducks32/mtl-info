@@ -123,6 +123,7 @@ fn main() -> io::Result<()> {
 
     if matches.is_present("count") {
         println!("Number of entries is {}", header.number_of_entries);
+        return Ok(());
     }
 
     let mut metal_library = MetalLibrary::create(header, None);
