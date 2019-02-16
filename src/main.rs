@@ -151,9 +151,9 @@ fn main() -> io::Result<()> {
 
                     debug!("Size of name {}", tag_length);
                     file.read_exact(&mut name_buffer)?;
-                    let name_slice = std::str::from_utf8(&name_buffer).unwrap();
+                    let name_slice = String::from_utf8(name_buffer).unwrap();
                     info!("Found entry named {}", name_slice);
-                    file_name = Some(name_slice.to_owned());
+                    file_name = Some(name_slice);
                 }
                 b"MDSZ" => {
                     debug!("MDSZ tag length {}", tag_length);
