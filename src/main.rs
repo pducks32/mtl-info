@@ -48,6 +48,21 @@ struct MetalLibrary {
     entry_stubs: Vec<MetalLibraryEntry>,
 }
 
+struct MetalEntryHeaderIterator<'a, T: Read + Seek> {
+    reader: &'a mut T,
+}
+
+impl<'a, T> Iterator for MetalEntryHeaderIterator<'a, T>
+where
+    T: Read + Seek,
+{
+    type Item = HeaderInformation;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
 impl MetalLibrary {
     fn create(header: HeaderInformation, entries: Option<Vec<MetalLibraryEntry>>) -> Self {
         let entry_stubs = entries.unwrap_or_else(|| {
