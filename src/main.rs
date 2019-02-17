@@ -3,50 +3,17 @@ extern crate clap;
 extern crate log;
 extern crate simple_logger;
 
-use clap::{App, Arg};
 use log::Level;
 use std::fs::File;
 use std::io;
 
+mod cli;
 mod parsing;
 
 use crate::parsing::{HeaderInformation, MetalEntryHeaderIterator, MetalLibrary};
 
 fn main() -> io::Result<()> {
-    let matches = App::new("mtl-info")
-        .version("1.0")
-        .author("Patrick M. <git@metcalfe.rocks>")
-        .about("Read's information from metallib files.")
-        .arg(
-            Arg::with_name("INPUT")
-                .help("Sets the input file to use")
-                .required(true)
-                .index(1),
-        )
-        .arg(
-            Arg::with_name("entries")
-                .short("l")
-                .long("list-entries")
-                .requires("INPUT")
-                .conflicts_with("count")
-                .help("Returns the entries' names and offsets"),
-        )
-        .arg(
-            Arg::with_name("count")
-                .short("n")
-                .long("count")
-                .requires("INPUT")
-                .help("Return number of functions found in INPUT"),
-        )
-        .arg(
-            Arg::with_name("verbosity")
-                .long("verbosity")
-                .takes_value(true)
-                .default_value("1")
-                .help("Set's the logger level. Between 1 and 4"),
-        )
-        .get_matches();
-
+    let matches = cli::build();
     let verbosity = matches
         .value_of("verbosity")
         .unwrap()
