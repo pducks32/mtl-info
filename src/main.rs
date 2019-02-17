@@ -10,7 +10,7 @@ use std::io;
 mod cli;
 mod parsing;
 
-use crate::parsing::{HeaderInformation, MetalEntryHeaderIterator, MetalLibrary};
+use crate::parsing::{HeaderInformation, MetalEntryHeaderIterator, MetalLibrary, Parser};
 
 fn main() -> io::Result<()> {
     let matches = cli::build();
@@ -35,25 +35,15 @@ fn main() -> io::Result<()> {
     // required we could have used an 'if let' to conditionally get the value)
     let input_file_path = matches.value_of("INPUT").unwrap();
     let mut file = File::open(input_file_path)?;
-
-    let header = HeaderInformation::from_reader(&mut file)?;
+    let mut parser = Parser::with_file(&mut file);
 
     if matches.is_present("count") {
-        println!("Number of entries is {}", header.number_of_entries);
+        println!("Number of entries is {}", parser.header().number_of_entries);
         return Ok(());
     }
 
     if matches.is_present("entries") {
-        let iterator = MetalEntryHeaderIterator {
-            reader: &mut file,
-            number_of_items: Some(header.number_of_entries as usize),
-            number_of_items_read: 0,
-        };
-        let entries = iterator.take(header.number_of_entries as usize);
-
-        let metal_library = MetalLibrary::create(header, Some(entries.collect()));
-
-        metal_library.entry_stubs.iter().for_each(|entry| {
+        parser.library().entry_stubs.iter().for_each(|entry| {
             println!("Function Name: {}", entry.name);
         })
     }

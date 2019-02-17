@@ -3,6 +3,7 @@ extern crate log;
 use log::{debug, info, trace};
 
 use byteorder::{LittleEndian, ReadBytesExt};
+use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::io::SeekFrom;
@@ -156,5 +157,71 @@ impl MetalLibrary {
       header,
       entry_stubs,
     }
+  }
+}
+
+pub struct Parser<'a, T: Read + Seek> {
+  reader: &'a mut T,
+  state: ParsingState,
+}
+
+enum ParsingState {
+  Initial,
+  Header(HeaderInformation),
+  EntryStubs(MetalLibrary),
+}
+
+impl<'a> Parser<'a, File> {
+  pub fn with_file<'b>(file: &'b mut File) -> Parser<'b, File> {
+    Parser {
+      reader: file,
+      state: ParsingState::Initial,
+    }
+  }
+}
+
+impl<'a, T> Parser<'a, T>
+where
+  T: Read + Seek,
+{
+  pub(crate) fn header(&mut self) -> &HeaderInformation {
+    match self.state {
+      ParsingState::Header(ref header) => header,
+      ParsingState::EntryStubs(ref lib) => &lib.header,
+      ParsingState::Initial => {
+        let header = HeaderInformation::from_reader(self.reader).unwrap();
+        self.state = ParsingState::Header(header);
+        match self.state {
+          ParsingState::Header(ref h) => h,
+          _ => unreachable!(),
+        }
+      }
+    }
+  }
+
+  pub(crate) fn library(&mut self) -> &MetalLibrary {
+    let _ensure_header = self.header();
+    let old_state = std::mem::replace(&mut self.state, ParsingState::Initial);
+    self.state = Parser::eat_state(old_state, self.reader);
+    match self.state {
+      ParsingState::EntryStubs(ref lib) => lib,
+      _ => unreachable!(),
+    }
+  }
+
+  fn eat_state(state: ParsingState, reader: &mut T) -> ParsingState {
+    let header = match state {
+      ParsingState::Header(h) => h,
+      _ => unreachable!(),
+    };
+    let iterator = MetalEntryHeaderIterator {
+      reader: reader,
+      number_of_items: Some(header.number_of_entries as usize),
+      number_of_items_read: 0,
+    };
+    let entries = iterator.take(header.number_of_entries as usize);
+
+    let metal_library = MetalLibrary::create(header, Some(entries.collect()));
+    ParsingState::EntryStubs(metal_library)
   }
 }
