@@ -52,6 +52,68 @@ struct MetalEntryHeaderIterator<'a, T: Read + Seek> {
     reader: &'a mut T,
 }
 
+struct Tag {
+    code: [u8; 4],
+    length: u16,
+}
+
+enum EntryHeaderTag {
+    Name(String),
+    Size(u64),
+    End,
+    Other(Tag),
+}
+
+struct EntryTagIterator<'a, T: Read + Seek> {
+    reader: &'a mut T,
+}
+
+impl<'a, T> Iterator for EntryTagIterator<'a, T>
+where
+    T: Read + Seek,
+{
+    type Item = EntryHeaderTag;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut tag_type = [0u8; 4];
+        self.reader.read(&mut tag_type).ok();
+        debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap());
+        if tag_type.as_ref() == b"ENDT" {
+            trace!("Hit end");
+            return Some(EntryHeaderTag::End);
+        }
+
+        let tag_length = self.reader.read_u16::<LittleEndian>().unwrap() as usize;
+        match tag_type.as_ref() {
+            b"NAME" => {
+                let mut name_buffer = vec![0u8; tag_length];
+
+                debug!("Size of name {}", tag_length);
+                self.reader.read_exact(&mut name_buffer).unwrap();
+                let name_slice = String::from_utf8(name_buffer).unwrap();
+                info!("Found entry named {}", name_slice);
+                Some(EntryHeaderTag::Name(name_slice))
+            }
+            b"MDSZ" => {
+                debug!("MDSZ tag length {}", tag_length);
+                let size = self.reader.read_u64::<LittleEndian>().unwrap();
+                info!("\t- Function size {}", size);
+                Some(EntryHeaderTag::Size(size))
+            }
+            _ => {
+                debug!("No match for tag length {}", tag_length);
+                self.reader
+                    .seek(SeekFrom::Current(tag_length as i64))
+                    .unwrap();
+                Some(EntryHeaderTag::Other(Tag {
+                    code: tag_type,
+                    length: tag_length as u16,
+                }))
+            }
+        }
+    }
+}
+
 impl<'a, T> Iterator for MetalEntryHeaderIterator<'a, T>
 where
     T: Read + Seek,
@@ -62,43 +124,20 @@ where
         let mut file_name: Option<String> = None;
         let mut body_size = 064;
         self.reader.seek(SeekFrom::Current(4)).unwrap(); // Entry size is not needed;
-        loop {
-            let mut tag_type = [0u8; 4];
-            self.reader.read(&mut tag_type).unwrap();
-            debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap());
-            if tag_type.as_ref() == b"ENDT" {
-                trace!("Hit end");
-                return Some(MetalLibraryEntry {
-                    name: file_name.unwrap(),
-                    body_size,
-                });
-            }
+        let iterator = EntryTagIterator {
+            reader: self.reader,
+        };
 
-            let tag_length = self.reader.read_u16::<LittleEndian>().unwrap() as usize;
-            match tag_type.as_ref() {
-                b"NAME" => {
-                    let mut name_buffer = vec![0u8; tag_length];
-
-                    debug!("Size of name {}", tag_length);
-                    self.reader.read_exact(&mut name_buffer).unwrap();
-                    let name_slice = String::from_utf8(name_buffer).unwrap();
-                    info!("Found entry named {}", name_slice);
-                    file_name = Some(name_slice);
-                }
-                b"MDSZ" => {
-                    debug!("MDSZ tag length {}", tag_length);
-                    let size = self.reader.read_u64::<LittleEndian>().unwrap();
-                    info!("\t- Function size {}", size);
-                    body_size = size;
-                }
-                _ => {
-                    debug!("No match for tag length {}", tag_length);
-                    self.reader
-                        .seek(SeekFrom::Current(tag_length as i64))
-                        .unwrap();
-                }
+        for tag in iterator {
+            match tag {
+                EntryHeaderTag::Name(name) => file_name = Some(name),
+                EntryHeaderTag::Size(size) => body_size = size,
+                EntryHeaderTag::End => break,
+                _ => continue,
             }
         }
+
+        file_name.map(|name| MetalLibraryEntry { name, body_size })
     }
 }
 
@@ -180,12 +219,10 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
-    let mut iterator = MetalEntryHeaderIterator { reader: &mut file };
-    let mut metal_library = MetalLibrary::create(header, None);
-
-    for _ in 0..metal_library.header.number_of_entries {
-        metal_library.entry_stubs.push(iterator.next().unwrap());
-    }
+    let iterator = MetalEntryHeaderIterator { reader: &mut file };
+    let entries: Vec<MetalLibraryEntry> =
+        iterator.take(header.number_of_entries as usize).collect();
+    let mut _metal_library = MetalLibrary::create(header, Some(entries));
 
     Ok(())
 }
