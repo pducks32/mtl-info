@@ -10,7 +10,7 @@ use std::io;
 mod cli;
 mod parsing;
 
-use crate::parsing::{HeaderInformation, MetalEntryHeaderIterator, MetalLibrary, Parser};
+use crate::parsing::Parser;
 
 fn main() -> io::Result<()> {
     let matches = cli::build();
