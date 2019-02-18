@@ -51,6 +51,7 @@ pub(crate) struct MetalEntryHeaderIterator<'a, T: Read + Seek> {
   pub number_of_items_read: usize,
 }
 
+#[allow(dead_code)]
 pub(crate) struct Tag {
   code: [u8; 4],
   length: u16,
@@ -184,6 +185,17 @@ impl<'a, T> Parser<'a, T>
 where
   T: Read + Seek,
 {
+  pub fn is_metal_library_file(reader: &mut T) -> bool {
+    let mut magic_bytes = [0u8; 4];
+    reader
+      .seek(SeekFrom::Start(0))
+      .expect("to be able to seek to beginning");
+    reader
+      .read_exact(&mut magic_bytes)
+      .expect("to be able to read 4 bytes");
+    magic_bytes.as_ref() == b"MTLB"
+  }
+
   pub(crate) fn header(&mut self) -> &HeaderInformation {
     match self.state {
       ParsingState::Header(ref header) => header,
@@ -207,6 +219,17 @@ where
       ParsingState::EntryStubs(ref lib) => lib,
       _ => unreachable!(),
     }
+  }
+
+  pub(crate) fn read_from_offset(&mut self, offset: u64, mut buffer: &mut [u8]) {
+    self
+      .reader
+      .seek(SeekFrom::Start(offset))
+      .expect("To be able to seek");
+    self
+      .reader
+      .read_exact(&mut buffer)
+      .expect("to be able to read");
   }
 
   fn eat_state(state: ParsingState, reader: &mut T) -> ParsingState {
