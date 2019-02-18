@@ -1,4 +1,4 @@
-use clap::{App, Arg, ArgMatches};
+use clap::{App, Arg, SubCommand, ArgMatches};
 
 pub fn build() -> ArgMatches<'static> {
   return App::new("mtl-info")
@@ -32,6 +32,10 @@ pub fn build() -> ArgMatches<'static> {
         .takes_value(true)
         .default_value("1")
         .help("Set's the logger level. Between 1 and 4"),
+    )
+    .subcommand(
+      SubCommand::with_name("bitcode")
+      .about("Print's bitcode of entry"),
     )
     .get_matches();
 }
