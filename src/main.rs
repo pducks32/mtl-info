@@ -6,6 +6,7 @@ extern crate simple_logger;
 use log::Level;
 use std::fs::File;
 use std::io;
+use std::io::prelude::*;
 
 mod cli;
 mod parsing;
@@ -45,7 +46,19 @@ fn main() -> io::Result<()> {
     if matches.is_present("entries") {
         parser.library().entry_stubs.iter().for_each(|entry| {
             println!("Function Name: {}", entry.name);
-        })
+        });
+    }
+
+    if matches.subcommand_name() == Some("bitcode") {
+        let library = parser.library();
+        let first_entry = library.entry_stubs.first().expect("First entry");
+        let start = library.header.entry_bodys_offset;
+        let mut body_buffer = vec![0u8; first_entry.body_size as usize];
+        parser.read_from_offset(start, &mut body_buffer);
+        std::io::stdout()
+            .lock()
+            .write_all(&body_buffer)
+            .expect("to be able to write out data");
     }
 
     Ok(())
