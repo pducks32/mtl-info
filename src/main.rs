@@ -38,28 +38,29 @@ fn main() -> io::Result<()> {
     let mut file = File::open(input_file_path)?;
     let mut parser = Parser::with_file(&mut file);
 
-    if matches.is_present("count") {
-        println!("Number of entries is {}", parser.header().number_of_entries);
-        return Ok(());
-    }
-
-    if matches.is_present("entries") {
-        parser.library().entry_stubs.iter().for_each(|entry| {
-            println!("Function Name: {}", entry.name);
-        });
-    }
-
-    if matches.subcommand_name() == Some("bitcode") {
-        let library = parser.library();
-        let first_entry = library.entry_stubs.first().expect("First entry");
-        let start = library.header.entry_bodys_offset;
-        let mut body_buffer = vec![0u8; first_entry.body_size as usize];
-        parser.read_from_offset(start, &mut body_buffer);
-        std::io::stdout()
-            .lock()
-            .write_all(&body_buffer)
-            .expect("to be able to write out data");
-    }
+    match matches.subcommand_name() {
+        Some("count") => {
+            println!("Number of entries is {}", parser.header().number_of_entries);
+        }
+        Some("list") => {
+            parser.library().entry_stubs.iter().for_each(|entry| {
+                println!("Function Name: {}", entry.name);
+            });
+        }
+        Some("bitcode") => {
+            let library = parser.library();
+            let first_entry = library.entry_stubs.first().expect("First entry");
+            let start = library.header.entry_bodys_offset;
+            let mut body_buffer = vec![0u8; first_entry.body_size as usize];
+            parser.read_from_offset(start, &mut body_buffer);
+            std::io::stdout()
+                .lock()
+                .write_all(&body_buffer)
+                .expect("to be able to write out data");
+        }
+        Some(_) => unreachable!(),
+        None => unreachable!(),
+    };
 
     Ok(())
 }
