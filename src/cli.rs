@@ -5,7 +5,24 @@ pub fn build() -> ArgMatches<'static> {
     .version("1.0")
     .author("Patrick M. <git@metcalfe.rocks>")
     .about("Read's information from metallib files.")
-    .subcommand(SubCommand::with_name("bitcode").about("Print's bitcode of entry"))
+    .subcommand(
+      SubCommand::with_name("bitcode")
+        .about("Print's bitcode of entry")
+        .arg(
+          Arg::with_name("name")
+            .long("with-name")
+            .short("f")
+            .help("Find entry by name")
+            .takes_value(true),
+        )
+        .arg(
+          Arg::with_name("index")
+            .long("with-index")
+            .short("i")
+            .help("Find entry by index in INPUT.")
+            .takes_value(true),
+        ),
+    )
     .subcommand(SubCommand::with_name("count").about("Print's number of entries"))
     .subcommand(
       SubCommand::with_name("list")
