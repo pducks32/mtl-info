@@ -1,5 +1,3 @@
-#![feature(try_from)]
-#![feature(repr_packed)]
 
 extern crate byteorder;
 extern crate clap;
