@@ -1,3 +1,5 @@
+#![feature(try_from)]
+
 extern crate byteorder;
 extern crate clap;
 extern crate log;

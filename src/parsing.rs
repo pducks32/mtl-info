@@ -4,6 +4,8 @@ extern crate colored;
 use log::{debug, info, trace, log_enabled, Level};
 use colored::*;
 
+use std::convert::TryInto;
+
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fs::File;
 use std::io;
@@ -40,6 +42,7 @@ impl HeaderInformation {
 pub(crate) struct MetalLibraryEntry {
   pub name: String,
   pub body_size: u64,
+  pub body_offset: u64,
 }
 
 pub(crate) struct MetalLibrary {
@@ -62,6 +65,7 @@ pub(crate) struct Tag {
 pub(crate) enum EntryHeaderTag {
   Name(String),
   Size(u64),
+  Offset(u64),
   End,
   Other(Tag),
 }
@@ -102,6 +106,20 @@ where
         info!("\t- Function size {}", format!("{}", size).bold());
         Some(EntryHeaderTag::Size(size))
       }
+      b"OFFT" => {
+        let mut name_buffer = vec![0u8; tag_length];
+        self.reader.read_exact(&mut name_buffer).unwrap();
+
+        if log_enabled!(Level::Trace) {
+          name_buffer.chunks_exact(8).for_each(|chunk| {
+            let value = u64::from_le_bytes(chunk.try_into().unwrap());
+            trace!("\t- Value: {}", format!("{:?}", value).bold());
+          });
+        }
+
+        let offset = u64::from_le_bytes(name_buffer[16..24].try_into().unwrap());
+        Some(EntryHeaderTag::Offset(offset))
+      }
       _ => {
         debug!("\t-NO MATCH");
         self
@@ -131,6 +149,7 @@ where
   fn next(&mut self) -> Option<Self::Item> {
     let mut file_name: Option<String> = None;
     let mut body_size = 064;
+    let mut body_offset = 064;
     self.reader.seek(SeekFrom::Current(4)).unwrap(); // Entry size is not needed;
     let iterator = EntryTagIterator {
       reader: self.reader,
@@ -140,12 +159,13 @@ where
       match tag {
         EntryHeaderTag::Name(name) => file_name = Some(name),
         EntryHeaderTag::Size(size) => body_size = size,
+        EntryHeaderTag::Offset(offset) => body_offset = offset,
         EntryHeaderTag::End => break,
         _ => continue,
       }
     }
     self.number_of_items_read += 1;
-    file_name.map(|name| MetalLibraryEntry { name, body_size })
+    file_name.map(|name| MetalLibraryEntry { name, body_size, body_offset })
   }
 }
 
