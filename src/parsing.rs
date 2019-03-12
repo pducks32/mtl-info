@@ -1,6 +1,8 @@
 extern crate byteorder;
 extern crate log;
-use log::{debug, info, trace};
+extern crate colored;
+use log::{debug, info, trace, log_enabled, Level};
+use colored::*;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::fs::File;
@@ -77,31 +79,30 @@ where
   fn next(&mut self) -> Option<Self::Item> {
     let mut tag_type = [0u8; 4];
     self.reader.read(&mut tag_type).ok();
-    debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap());
+    debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap().bold());
     if tag_type.as_ref() == b"ENDT" {
-      trace!("Hit end");
+      trace!("-------------");
       return Some(EntryHeaderTag::End);
     }
 
     let tag_length = self.reader.read_u16::<LittleEndian>().unwrap() as usize;
+    debug!("\t- Tag Length {}", format!("{}", tag_length).bold());
     match tag_type.as_ref() {
       b"NAME" => {
         let mut name_buffer = vec![0u8; tag_length];
 
-        debug!("Size of name {}", tag_length);
         self.reader.read_exact(&mut name_buffer).unwrap();
-        let name_slice = String::from_utf8(name_buffer).unwrap();
-        info!("Found entry named {}", name_slice);
+        let mut name_slice = String::from_utf8(name_buffer).unwrap();
+        info!("\t- Name: {}", format!("{:?}", name_slice).bold());
         Some(EntryHeaderTag::Name(name_slice))
       }
       b"MDSZ" => {
-        debug!("MDSZ tag length {}", tag_length);
         let size = self.reader.read_u64::<LittleEndian>().unwrap();
-        info!("\t- Function size {}", size);
+        info!("\t- Function size {}", format!("{}", size).bold());
         Some(EntryHeaderTag::Size(size))
       }
       _ => {
-        debug!("No match for tag length {}", tag_length);
+        debug!("\t-NO MATCH");
         self
           .reader
           .seek(SeekFrom::Current(tag_length as i64))
