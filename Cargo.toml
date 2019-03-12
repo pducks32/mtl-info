@@ -7,6 +7,7 @@ repository = "https://github.com/pducks32/mtl-info"
 homepage = "https://github.com/pducks32/mtl-info"
 readme = "README.md"
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 byteorder = "1"
