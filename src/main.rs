@@ -61,15 +61,7 @@ fn main() -> io::Result<()> {
                 let entry_stub = library
                     .entry_stubs
                     .iter()
-                    .find(|e| {
-                        debug!(
-                            "Do they match {:?} versus {:?}: {}",
-                            e.name,
-                            name,
-                            e.name == name
-                        );
-                        e.name == name
-                    })
+                    .find(|e| e.name == name)
                     .expect("entry matching name");
                 let start = library.header.entry_bodys_offset + entry_stub.body_offset;
                 let mut body_buffer = vec![0u8; entry_stub.body_size as usize];
