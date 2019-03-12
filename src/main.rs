@@ -4,6 +4,7 @@ extern crate log;
 extern crate simple_logger;
 
 use log::Level;
+use log::{debug, warn};
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -48,15 +49,50 @@ fn main() -> io::Result<()> {
             });
         }
         Some("bitcode") => {
-            let library = parser.library();
-            let first_entry = library.entry_stubs.first().expect("First entry");
-            let start = library.header.entry_bodys_offset;
-            let mut body_buffer = vec![0u8; first_entry.body_size as usize];
-            parser.read_from_offset(start, &mut body_buffer);
-            std::io::stdout()
-                .lock()
-                .write_all(&body_buffer)
-                .expect("to be able to write out data");
+            let find_args = matches
+                .subcommand_matches("bitcode")
+                .expect("a way to find the entry");
+
+            if let Some(name) = find_args.value_of("name") {
+                let library = parser.library();
+                warn!("Entry to search for is {:?}", name);
+                let entry_stub = library
+                    .entry_stubs
+                    .iter()
+                    .find(|e| {
+                        debug!(
+                            "Do they match {:?} versus {:?}: {}",
+                            e.name,
+                            name,
+                            e.name == name
+                        );
+                        e.name == name
+                    })
+                    .expect("entry matching name");
+                let start = library.header.entry_bodys_offset + entry_stub.body_offset;
+                let mut body_buffer = vec![0u8; entry_stub.body_size as usize];
+                parser.read_from_offset(start, &mut body_buffer);
+                std::io::stdout()
+                    .lock()
+                    .write_all(&body_buffer)
+                    .expect("to be able to write out data");
+            }
+
+            if let Some(index) = find_args.value_of("index") {
+                let library = parser.library();
+                let entry_stub = library
+                    .entry_stubs
+                    .iter()
+                    .find(|e| e.name == index)
+                    .expect("entry matching name");
+                let start = library.header.entry_bodys_offset;
+                let mut body_buffer = vec![0u8; entry_stub.body_size as usize];
+                parser.read_from_offset(start, &mut body_buffer);
+                std::io::stdout()
+                    .lock()
+                    .write_all(&body_buffer)
+                    .expect("to be able to write out data");
+            }
         }
         Some(_) => unreachable!(),
         None => unreachable!(),
