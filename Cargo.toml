@@ -1,7 +1,11 @@
 [package]
 name = "mtl-info"
+description = "Process and decode Apple Metal library files."
 version = "0.2.0"
 authors = ["Patrick Metcalfe <git@patrickmetcalfe.com>"]
+repository = "https://github.com/pducks32/mtl-info"
+homepage = "https://github.com/pducks32/mtl-info"
+readme = "README.md"
 edition = "2018"
 
 [dependencies]
