@@ -93,6 +93,7 @@ where
 
         self.reader.read_exact(&mut name_buffer).unwrap();
         let mut name_slice = String::from_utf8(name_buffer).unwrap();
+        name_slice.pop(); // Remove \0
         info!("\t- Name: {}", format!("{:?}", name_slice).bold());
         Some(EntryHeaderTag::Name(name_slice))
       }
