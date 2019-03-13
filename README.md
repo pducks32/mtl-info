@@ -10,6 +10,16 @@ cargo install mtl-info
 mtl-info --help
 ```
 
+## Introduction
+
+An Apple Metal Library is a binary file format containing compiled Metal shaders. Many applications will include multiple such shaders which are all saved in the same Library file (usually called `default.metallib`). `mtl-info` helps parse and decode these files.
+
+Each file begins with a CC char code to designate the file to macOS. The specific code is `MTLB`.
+
+After that are a set of headers describing each shader within the file including it’s name and where it’s binary code exists within the library file.
+
+Following that is the binary code data which is LLVM bitcode which can be converted using `llvm-dis` into a more human readable format.
+
 ## Usage
 ### Listing Entries
 For listing the names of every Metal fragment or vertex shader in the Metal library.
