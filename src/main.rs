@@ -5,7 +5,7 @@ extern crate log;
 extern crate simple_logger;
 
 use log::Level;
-use log::{debug, warn};
+use log::warn;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
