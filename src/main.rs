@@ -38,6 +38,11 @@ fn main() -> io::Result<()> {
     // required we could have used an 'if let' to conditionally get the value)
     let input_file_path = matches.value_of("INPUT").unwrap();
     let mut file = File::open(input_file_path)?;
+
+    if !Parser::is_metal_library_file(&mut file) {
+        return Err(io::Error::new(io::ErrorKind::InvalidInput, "INPUT is not a metal library file. "));
+    }
+
     let mut parser = Parser::with_file(&mut file);
 
     match matches.subcommand_name() {
