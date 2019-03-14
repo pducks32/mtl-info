@@ -190,18 +190,37 @@ impl MetalLibrary {
   }
 }
 
+/// Creates a metal library parser around a `Read` and `Seek`
+/// data set.
+///
+/// It maintains an internal `state: ParsingState` to avoid
+/// redundant processing. Most uses of `Parser<T>` should
+/// therefore be mutable.
 pub struct Parser<'a, T: Read + Seek> {
   reader: &'a mut T,
   state: ParsingState,
 }
 
+/// State of a `Parser`
+///
+/// Parsers will transition from `Initial`
+/// to `Header` once the library's header has been
+/// read. Then it will be ready to read the entry
+/// headers which will cause a transiton to
+/// `EntryStubs`
 enum ParsingState {
+  /// No processing has yet happened.
   Initial,
+  /// Library header has been read.
   Header(HeaderInformation),
+  /// Entry headers have been read.
   EntryStubs(MetalLibrary),
 }
 
 impl<'a> Parser<'a, File> {
+  /// Create a `Parser` object around a file.
+  ///
+  /// File must be mutable since it must be read.
   pub fn with_file(file: &'_ mut File) -> Parser<'_, File> {
     Parser {
       reader: file,
@@ -214,6 +233,13 @@ impl<'a, T> Parser<'a, T>
 where
   T: Read + Seek,
 {
+  /// Checks that a reader can be understood as a metallib file
+  ///
+  /// # Remarks
+  ///
+  /// Apple is fond of 4 byte header codes. Metal Libraries
+  /// use the `"MTLB"` designation which should exist at
+  /// mark 0.
   pub fn is_metal_library_file(reader: &mut T) -> bool {
     let mut magic_bytes = [0u8; 4];
     reader
