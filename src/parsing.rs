@@ -1,8 +1,8 @@
 extern crate byteorder;
-extern crate log;
 extern crate colored;
-use log::{debug, info, trace, log_enabled, Level};
+extern crate log;
 use colored::*;
+use log::{debug, info, log_enabled, trace, Level};
 
 use std::convert::TryInto;
 
@@ -23,19 +23,19 @@ impl HeaderInformation {
     reader: &mut RAndS,
   ) -> Result<HeaderInformation, io::Error> {
     reader.seek(SeekFrom::Start(0x18))?;
-    let number_of_entries_offset = reader.read_u32::<LittleEndian>()? as u64;
+    let number_of_entries_offset = u64::from(reader.read_u32::<LittleEndian>()?);
 
     reader.seek(SeekFrom::Start(0x48))?;
-    let payload_offset = reader.read_u32::<LittleEndian>()? as u64;
+    let payload_offset = u64::from(reader.read_u32::<LittleEndian>()?);
 
     reader.seek(SeekFrom::Start(number_of_entries_offset))?;
     let number_of_entries = reader.read_u32::<LittleEndian>()?;
 
-    return Ok(HeaderInformation {
+    Ok(HeaderInformation {
       entry_headers_offset: number_of_entries_offset + 4,
       entry_bodys_offset: payload_offset,
       number_of_entries,
-    });
+    })
   }
 }
 
@@ -83,7 +83,10 @@ where
   fn next(&mut self) -> Option<Self::Item> {
     let mut tag_type = [0u8; 4];
     self.reader.read(&mut tag_type).ok();
-    debug!("Tag name {}", std::str::from_utf8(&tag_type).unwrap().bold());
+    debug!(
+      "Tag name {}",
+      std::str::from_utf8(&tag_type).unwrap().bold()
+    );
     if tag_type.as_ref() == b"ENDT" {
       trace!("-------------");
       return Some(EntryHeaderTag::End);
@@ -143,13 +146,13 @@ where
 
   fn size_hint(&self) -> (usize, Option<usize>) {
     let bound = self.number_of_items.map(|m| m - self.number_of_items_read);
-    return (bound.unwrap_or_default(), bound);
+    (bound.unwrap_or_default(), bound)
   }
 
   fn next(&mut self) -> Option<Self::Item> {
     let mut file_name: Option<String> = None;
-    let mut body_size = 064;
-    let mut body_offset = 064;
+    let mut body_size = 0u64;
+    let mut body_offset = 0u64;
     self.reader.seek(SeekFrom::Current(4)).unwrap(); // Entry size is not needed;
     let iterator = EntryTagIterator {
       reader: self.reader,
@@ -165,7 +168,11 @@ where
       }
     }
     self.number_of_items_read += 1;
-    file_name.map(|name| MetalLibraryEntry { name, body_size, body_offset })
+    file_name.map(|name| MetalLibraryEntry {
+      name,
+      body_size,
+      body_offset,
+    })
   }
 }
 
@@ -195,7 +202,7 @@ enum ParsingState {
 }
 
 impl<'a> Parser<'a, File> {
-  pub fn with_file<'b>(file: &'b mut File) -> Parser<'b, File> {
+  pub fn with_file(file: &'_ mut File) -> Parser<'_, File> {
     Parser {
       reader: file,
       state: ParsingState::Initial,
@@ -260,7 +267,7 @@ where
       _ => unreachable!(),
     };
     let iterator = MetalEntryHeaderIterator {
-      reader: reader,
+      reader,
       number_of_items: Some(header.number_of_entries as usize),
       number_of_items_read: 0,
     };

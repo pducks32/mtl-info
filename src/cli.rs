@@ -1,7 +1,7 @@
 use clap::{App, Arg, ArgMatches, SubCommand};
 
 pub fn build() -> ArgMatches<'static> {
-  return App::new("mtl-info")
+  App::new("mtl-info")
     .version("1.0")
     .author("Patrick M. <git@metcalfe.rocks>")
     .about("Read's information from metallib files.")
@@ -42,5 +42,5 @@ pub fn build() -> ArgMatches<'static> {
         .default_value("1")
         .help("Set's the logger level. Between 1 and 4"),
     )
-    .get_matches();
+    .get_matches()
 }

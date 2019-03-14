@@ -1,11 +1,10 @@
-
 extern crate byteorder;
 extern crate clap;
 extern crate log;
 extern crate simple_logger;
 
-use log::Level;
 use log::warn;
+use log::Level;
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
@@ -40,7 +39,10 @@ fn main() -> io::Result<()> {
     let mut file = File::open(input_file_path)?;
 
     if !Parser::is_metal_library_file(&mut file) {
-        return Err(io::Error::new(io::ErrorKind::InvalidInput, "INPUT is not a metal library file. "));
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "INPUT is not a metal library file. ",
+        ));
     }
 
     let mut parser = Parser::with_file(&mut file);
